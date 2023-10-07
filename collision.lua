@@ -11,7 +11,7 @@ elseif norns then
   FPS = 15
 end
 
-BANG_INTERVAL_S = 0.7
+BANG_INTERVAL_S = 2
 
 function screen_size()
   if seamstress then
@@ -25,10 +25,12 @@ end
 -- -------------------------------------------------------------------------
 -- colors
 
+COL_FLASH = {250, 250, 250}
 COL_PARTICLE = {255, 165, 0}
 COL_BARS = {253, 238, 0}
 COL_MUON = {255, 0, 0}
 COL_BORDER = {147, 112, 219}
+COL_RIPPLE = {80, 75, 224}
 
 
 -- -------------------------------------------------------------------------
@@ -41,6 +43,7 @@ frame_count = 1
 muons = {}
 particles = {}
 hadrons = {}
+ripples = {}
 
 function pct_time_bang()
   local elapsed_s = frame_count * (1/FPS)
@@ -50,6 +53,7 @@ end
 function bang()
   local nb_muons = math.random(1, 4)
   local nb_particles = math.random(10, 25)
+  local nb_ripples = math.random(20, 40)
 
   hadrons = {}
 
@@ -70,6 +74,14 @@ function bang()
 
     table.insert(hadrons, {angle, math.random(100) / 100})
   end
+
+  ripples = {}
+  for m=1,nb_ripples do
+    local angle = math.random(100) / 100
+    local offset = math.random(100) / 100
+    local radius = math.random(10, 100) / 100
+    table.insert(ripples, {angle, offset, radius})
+  end
 end
 
 -- -------------------------------------------------------------------------
@@ -86,6 +98,16 @@ end
 -- base1 modulo
 function mod1(v, m)
   return ((v - 1) % m) + 1
+end
+
+function points_dist(x1, y1, x2, y2)
+  local dx = x1 - x2
+  local dy = y1 - y2
+  return math.sqrt(dx^2 + dy^2)
+end
+
+function point_in_circle(cx, cy, r, px, py)
+  return (points_dist(cx, cy, px, py) <= r )
 end
 
 function color_scale(min_col, max_col, cursor)
@@ -146,14 +168,45 @@ function redraw()
 
   screen.move(center_x, center_y)
 
-  screen.color(table.unpack(color_scale(COL_MUON, {0, 0, 0}, pct_bang)))
-  for _, angle in pairs(muons) do
-    local bx = center_x + (screen_w/2) * cos(angle) * -1
-    local by = center_y + (screen_w/2) * sin(angle)
-    screen.line(bx, by)
+  -- inner ripples
+  if tab.count(muons) > 0 then
+    local inner_ripples = {1/9, 1/2, 1/2 + 1/8, 1/2 + 2/8, 1/2 + 3/8}
+    screen.color(table.unpack(color_scale(COL_BARS, {0, 0, 0}, pct_bang * 1.5)))
+    for _, r_ratio in pairs(inner_ripples) do
+      local r = inner_r * r_ratio
+      for i=1,70 do
+        if math.random(3) > 1 then
+          local px = center_x + r * cos(i/70) * -1
+          local py = center_y + r * sin(i/70)
+          screen.pixel(px, py)
+        end
+      end
+    end
   end
 
-  screen.color(table.unpack(color_scale(COL_PARTICLE, {0, 0, 0}, pct_bang)))
+  screen.color(table.unpack(color_scale(COL_RIPPLE, {0, 0, 0}, pct_bang)))
+  for _, r in pairs(ripples) do
+    local angle, offset, radius = table.unpack(r)
+    local r = radius * outer_r * 3/4
+    local ax = center_x + (offset * outer_r) * cos(angle) * -1
+    local ay = center_y + (offset * outer_r) * sin(angle)
+
+    -- screen.move(ax, ay)
+    -- screen.circle(radius * outer_r * 3/4)
+
+    for i=1,100 do
+      if math.random(3) > 1 then
+        local px = ax + r * cos(i/100) * -1
+        local py = ay + r * sin(i/100)
+        if point_in_circle(center_x, center_y, outer_r, px, py)
+          and not point_in_circle(center_x, center_y, inner_r, px, py) then
+          screen.pixel(px, py)
+        end
+      end
+    end
+  end
+
+  screen.color(table.unpack(color_scale(COL_PARTICLE, {0, 0, 0}, pct_bang * 1/4)))
   for _, p in pairs(particles) do
     local angle, angle2, dir = table.unpack(p)
     local bx = center_x + outer_r * cos(angle) * -1
@@ -165,15 +218,15 @@ function redraw()
     screen.curve(midx, midy, midx, midy, bx, by)
   end
 
-  screen.color(table.unpack(color_scale(COL_BARS, {0, 0, 0}, pct_bang)))
+  screen.color(table.unpack(color_scale(COL_BARS, {0, 0, 0}, pct_bang * 2)))
   local offset = 0.01
   for _, h in pairs(hadrons) do
     local angle, amp = table.unpack(h)
-    local ax = center_x + (outer_r + 2) * cos(angle - offset) * -1
-    local ay = center_y + (outer_r + 2) * sin(angle - offset)
+    local ax = center_x + (outer_r + 3) * cos(angle - offset) * -1
+    local ay = center_y + (outer_r + 3) * sin(angle - offset)
 
-    local bx = center_x + (outer_r + 2) * cos(angle + offset) * -1
-    local by = center_y + (outer_r + 2) * sin(angle + offset)
+    local bx = center_x + (outer_r + 3) * cos(angle + offset) * -1
+    local by = center_y + (outer_r + 3) * sin(angle + offset)
 
     local cx = center_x + (outer_r + amp * bar_max) * cos(angle - offset) * -1
     local cy = center_y + (outer_r + amp * bar_max) * sin(angle - offset)
@@ -194,9 +247,23 @@ function redraw()
   end
 
   screen.move(center_x, center_y)
+  screen.color(table.unpack(color_scale(COL_MUON, {0, 0, 0}, pct_bang * 1/4)))
+  for _, angle in pairs(muons) do
+    local bx = center_x + (screen_w/2) * cos(angle) * -1
+    local by = center_y + (screen_w/2) * sin(angle)
+    screen.line(bx, by)
+  end
+
+  screen.move(center_x, center_y)
   screen.color(table.unpack(COL_BORDER))
   screen.circle(outer_r)
   screen.circle(inner_r)
+
+  if frame_count < 5 then
+    screen.move(1, 1)
+    screen.color(table.unpack(COL_FLASH))
+    screen.rect_fill(screen_w, screen_h)
+  end
 
   if seamstress then
     screen.refresh()
