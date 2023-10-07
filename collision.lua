@@ -189,7 +189,7 @@ function redraw()
     end
   end
 
-  screen.color(table.unpack(color_scale(COL_RIPPLE, COL_DETECTOR_BG, pct_bang)))
+  screen.color(table.unpack(color_scale(COL_RIPPLE, COL_DETECTOR_BG, math.min(pct_bang * 1.5, 1))))
   for _, r in pairs(ripples) do
     local angle, offset, radius = table.unpack(r)
     local r = radius * outer_r * 3/4
