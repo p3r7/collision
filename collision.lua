@@ -25,12 +25,15 @@ end
 -- -------------------------------------------------------------------------
 -- colors
 
+COL_BG = {0, 0, 0}
 COL_FLASH = {250, 250, 250}
+COL_DETECTOR_BG = {25, 21, 13}
+-- COL_DETECTOR_BG = {13, 25, 21}
 COL_PARTICLE = {255, 165, 0}
 COL_BARS = {253, 238, 0}
 COL_MUON = {255, 0, 0}
 COL_BORDER = {147, 112, 219}
-COL_RIPPLE = {80, 75, 224}
+COL_RIPPLE = {110, 105, 120}
 
 
 -- -------------------------------------------------------------------------
@@ -93,11 +96,6 @@ end
 
 function sin(x)
   return -math.sin(math.rad(x * 360))
-end
-
--- base1 modulo
-function mod1(v, m)
-  return ((v - 1) % m) + 1
 end
 
 function points_dist(x1, y1, x2, y2)
@@ -168,23 +166,30 @@ function redraw()
 
   screen.move(center_x, center_y)
 
+  -- detector bg
+  screen.color(table.unpack(COL_DETECTOR_BG))
+  screen.circle_fill(outer_r)
+  screen.color(table.unpack(COL_BG))
+  screen.circle_fill(inner_r)
+
   -- inner ripples
   if tab.count(muons) > 0 then
     local inner_ripples = {1/9, 1/2, 1/2 + 1/8, 1/2 + 2/8, 1/2 + 3/8}
-    screen.color(table.unpack(color_scale(COL_BARS, {0, 0, 0}, pct_bang * 1.5)))
+    screen.color(table.unpack(color_scale(COL_BARS, COL_BG, pct_bang * 1.5)))
     for _, r_ratio in pairs(inner_ripples) do
       local r = inner_r * r_ratio
       for i=1,70 do
         if math.random(3) > 1 then
-          local px = center_x + r * cos(i/70) * -1
-          local py = center_y + r * sin(i/70)
+          local noize = (1+math.random(10)/100)
+          local px = center_x + r * noize * cos(i/70) * -1
+          local py = center_y + r * noize * sin(i/70)
           screen.pixel(px, py)
         end
       end
     end
   end
 
-  screen.color(table.unpack(color_scale(COL_RIPPLE, {0, 0, 0}, pct_bang)))
+  screen.color(table.unpack(color_scale(COL_RIPPLE, COL_DETECTOR_BG, pct_bang)))
   for _, r in pairs(ripples) do
     local angle, offset, radius = table.unpack(r)
     local r = radius * outer_r * 3/4
@@ -206,7 +211,7 @@ function redraw()
     end
   end
 
-  screen.color(table.unpack(color_scale(COL_PARTICLE, {0, 0, 0}, pct_bang * 1/4)))
+  screen.color(table.unpack(color_scale(COL_PARTICLE, COL_BG, pct_bang * 1/4)))
   for _, p in pairs(particles) do
     local angle, angle2, dir = table.unpack(p)
     local bx = center_x + outer_r * cos(angle) * -1
@@ -218,7 +223,7 @@ function redraw()
     screen.curve(midx, midy, midx, midy, bx, by)
   end
 
-  screen.color(table.unpack(color_scale(COL_BARS, {0, 0, 0}, pct_bang * 2)))
+  screen.color(table.unpack(color_scale(COL_BARS, COL_BG, pct_bang * 2)))
   local offset = 0.01
   for _, h in pairs(hadrons) do
     local angle, amp = table.unpack(h)
@@ -247,7 +252,7 @@ function redraw()
   end
 
   screen.move(center_x, center_y)
-  screen.color(table.unpack(color_scale(COL_MUON, {0, 0, 0}, pct_bang * 1/4)))
+  screen.color(table.unpack(color_scale(COL_MUON, COL_BG, pct_bang * 1/4)))
   for _, angle in pairs(muons) do
     local bx = center_x + (screen_w/2) * cos(angle) * -1
     local by = center_y + (screen_w/2) * sin(angle)
