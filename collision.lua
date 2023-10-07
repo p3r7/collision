@@ -211,7 +211,7 @@ function redraw()
     end
   end
 
-  screen.color(table.unpack(color_scale(COL_PARTICLE, COL_BG, pct_bang * 1/4)))
+  screen.color(table.unpack(color_scale(COL_FLASH, COL_PARTICLE, math.min(pct_bang * 4, 1))))
   for _, p in pairs(particles) do
     local angle, angle2, dir = table.unpack(p)
     local bx = center_x + outer_r * cos(angle) * -1
